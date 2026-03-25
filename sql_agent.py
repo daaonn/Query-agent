@@ -37,7 +37,30 @@ def generate_sql(question: str) -> str:
 
 def query_bq(sql: str):
     try:
-        bq = bigquery.Client(project=os.getenv("GCP_PROJECT_ID"))
+        import streamlit as st
+        from google.oauth2 import service_account
+
+        # Streamlit Cloud 환경
+        if hasattr(st, 'secrets') and 'GOOGLE_PRIVATE_KEY' in st.secrets:
+            credentials = service_account.Credentials.from_service_account_info(
+                {
+                    "type": "service_account",
+                    "project_id": st.secrets["GCP_PROJECT_ID"],
+                    "private_key_id": st.secrets["GOOGLE_PRIVATE_KEY_ID"],
+                    "private_key": st.secrets["GOOGLE_PRIVATE_KEY"].replace("\\n", "\n"),
+                    "client_email": st.secrets["GOOGLE_CLIENT_EMAIL"],
+                    "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+                    "token_uri": "https://oauth2.googleapis.com/token"
+                }
+            )
+            bq = bigquery.Client(
+                project=st.secrets["GCP_PROJECT_ID"],
+                credentials=credentials
+            )
+        # 로컬 환경
+        else:
+            bq = bigquery.Client(project=os.getenv("GCP_PROJECT_ID"))
+
         df = bq.query(sql).to_dataframe()
         return df
 
